@@ -6,19 +6,16 @@ const canvas = document.getElementById("game-window");
 const ctx = canvas.getContext("2d");
 
 let imageData = wasm.ImageData.new(320, 240);
+let game = wasm.Game.new();
 
-let x = 10;
-let y = 10;
 
 async function draw_image(ctx, width, height) {
-    const pixelPtr = imageData.draw_test_image(x, y); 
+    const pixelPtr = game.render();
     const arr = new Uint8ClampedArray(memory.buffer, pixelPtr, width * 4 * height);
     
     //console.log("LEN:", arr);
     const img_data = new ImageData(arr, width, height);
     ctx.putImageData(img_data, 0,0);
-    x = (x + 1)%320;
-    //y = (y + 1)%100;
 }
 
 function changeResolution(canvas, scaleFactor) {
