@@ -5,7 +5,6 @@ const canvas = document.getElementById("game-window");
 
 const ctx = canvas.getContext("2d");
 
-let imageData = wasm.ImageData.new(320, 240);
 let game = wasm.Game.new();
 
 
@@ -29,6 +28,31 @@ function changeResolution(canvas, scaleFactor) {
     var ctx = canvas.getContext('2d');
     ctx.scale(scaleFactor, scaleFactor);
 }
+
+addEventListener("keypress", (event) => {
+    
+    console.log(event.code);
+    switch (event.code){
+        case 'KeyW':
+            game.update_player(0.1, 0, false);
+            break;
+        case 'KeyS':
+            game.update_player(-0.1, 0, false);
+            break;
+        case 'KeyA':
+            game.update_player(0.1, 0, true);
+            break;
+        case 'KeyD':
+            game.update_player(-0.1, 0, true);
+            break;
+        case 'KeyQ':
+            game.update_player(0.0, -3, false);
+            break;
+        case 'KeyE':
+            game.update_player(-0.0, 3, false);
+            break;
+    }
+});
 
 async function render() {
     draw_image(ctx,320, 240);
