@@ -48,19 +48,19 @@ const FOV: f64 = 70.0;
 const MAP_W: usize = 16;
 const MAP_H: usize = 16;
 const MAP: [u8;256] = [1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,
-                       1,0,0,5,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,4,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,5,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,5,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,5,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,5,0,0,0,0,0,2,0,0,0,0,0,1,
-                       1,0,0,5,1,6,1,0,0,2,0,0,0,0,0,1,
-                       1,0,0,0,0,0,0,0,0,2,0,0,2,2,0,1,
-                       1,0,0,0,0,0,0,0,0,2,0,0,1,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
                        1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,
-                       1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,
-                       1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,
-                       1,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,
+                       1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+                       1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
                        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
                        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
 
@@ -173,7 +173,7 @@ impl ImageData {
                 self.set_pixel(index as usize,
                                yindex as usize,
                                &Pixel { r: (250  * yindex as usize / self.height) as u8,
-                                        g: (250  * index as usize/ self.width) as u8,
+                                        g: (250  * index as usize / self.width) as u8,
                                         b: 0, 
                                         a: 255
                                     }).ok(); 
@@ -192,9 +192,58 @@ pub struct Player {
     pub angle: f64
 }
 
+fn clamp_i32(val: i32, lower: Option<i32>, upper: Option<i32>) -> i32 {
+    if let Some(l) = lower {
+        if l > val {
+            return l;
+        }
+    }
+
+    if let Some(h) = upper {
+        if h < val {
+            return h;
+        }
+    }
+
+    val
+}
+
 #[wasm_bindgen]
 impl Player {
 
+    fn collision(&self) -> bool {
+       let x_loc = clamp_i32(self.x as i32 - 2, Some(0), Some(MAP_H as i32));
+       let y_loc = clamp_i32(self.y as i32 - 2, Some(0), Some(MAP_H as i32));
+        
+       log(&format!("X: {x_loc} , Y: {y_loc}"));
+       for xdx in (x_loc)..(x_loc+4) {
+        for ydx in (y_loc)..(y_loc+4) {
+            if MAP[ydx as usize * MAP_W + xdx as usize] != 0 {
+               let mut by = ydx as f64 + 0.2;
+               let mut bx = xdx as f64;
+               
+               if bx < self.x {
+                   bx += 0.5;
+               }
+
+               if by < self.y {
+                   by += 0.5;
+               }
+
+
+               let dist = f64::sqrt((by - self.y) * (by - self.y) + (bx - self.x) * (bx - self.x));
+            
+               if dist < 1.0 {
+                   log(&format!("Collision detected {dist} Wall [ X: {bx} Y: {by} ] Player [ X: {} Y: {} ]", self.x, self.y));
+                return true;
+               }
+
+            }
+        }
+       }
+    false 
+
+    }
     fn look_at(&self, offset: Option<f64>) -> Option<RayHit> {
         let mut c = 0_f64;
         let angle = match offset {
@@ -246,8 +295,11 @@ impl Game {
             } else {
                 self.player.x += speed * (self.player.angle * PI / 180.0 ).cos();
                 self.player.y += speed * (self.player.angle * PI / 180.0 ).sin();
-
             }
+            if self.player.collision() {
+                self.update_player(-speed, angle, sideways)
+            }
+           
         }
 
     fn draw_hud(&mut self) {
@@ -334,7 +386,7 @@ impl Game {
             }
         }
     }
-
+    
     pub fn render(&mut self) -> *const u8 {
         self.image_buffer.clear();
         self.render_sky();
